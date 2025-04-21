@@ -242,14 +242,14 @@ const AssetTransferHistory = () => {
             ...prev,
             [name]: value
         }));
-        // Reset về trang đầu tiên khi thay đổi filter
+
         setPagination(prev => ({ ...prev, page: 0 }));
     };
 
-    const handleApplyFilters = () => {
-        setPagination(prev => ({ ...prev, page: 0 }));
-        fetchLogs();
-    };
+    // const handleApplyFilters = () => {
+    //     setPagination(prev => ({ ...prev, page: 0 }));
+    //     fetchLogs();
+    // };
 
     const handleResetFilters = () => {
         setFilters({
@@ -262,18 +262,18 @@ const AssetTransferHistory = () => {
         fetchLogs();
     };
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Chờ xử lý':
-                return 'warning';
-            case 'Hoàn thành':
-                return 'success';
-            case 'Đã hủy':
-                return 'error';
-            default:
-                return 'default';
-        }
-    };
+    // const getStatusColor = (status) => {
+    //     switch (status) {
+    //         case 'Chờ xử lý':
+    //             return 'warning';
+    //         case 'Hoàn thành':
+    //             return 'success';
+    //         case 'Đã hủy':
+    //             return 'error';
+    //         default:
+    //             return 'default';
+    //     }
+    // };
 
     const columns = [
         { 

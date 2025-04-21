@@ -352,15 +352,15 @@ const AssetManagement = () => {
         setSnackbar({ open: true, message, severity });
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString();
-    };
-
-    const formatCurrency = (value) => {
-        if (!value) return '';
-        return value.toLocaleString('vi-VN') + ' VNĐ';
-    };
+    // const formatDate = (dateString) => {
+    //     if (!dateString) return '';
+    //     return new Date(dateString).toLocaleDateString();
+    // };
+    //
+    // const formatCurrency = (value) => {
+    //     if (!value) return '';
+    //     return value.toLocaleString('vi-VN') + ' VNĐ';
+    // };
 
     const formatPrice = (price) => {
         return new Intl.NumberFormat('vi-VN', { 
@@ -582,14 +582,13 @@ const AssetManagement = () => {
                 return;
             }
 
-            // Lấy userId từ token
             const userId = getUserIdFromToken();
             if (!userId) {
                 showSnackbar('Không tìm thấy thông tin người dùng', 'error');
                 return;
             }
 
-            // Chỉ kiểm tra số lượng khi xuất kho
+            // check quantity when export asset
             if (transferType === 'EXPORT') {
                 const asset = assets.find(a => a._id === transferData.assetId);
                 if (!asset) {
@@ -602,16 +601,14 @@ const AssetManagement = () => {
                     return;
                 }
 
-                // Kiểm tra văn phòng đích
+                // check selected toOffice
                 if (!transferData.toOfficeId) {
                     showSnackbar('Vui lòng chọn văn phòng đích', 'error');
                     return;
                 }
 
-                // Log dữ liệu trước khi gửi
                 console.log('Asset gốc:', asset);
 
-                // Chuẩn bị dữ liệu sourceAsset
                 const sourceAssetData = prepareSourceAssetData(asset);
                 console.log('Source Asset Data:', sourceAssetData);
 
@@ -626,8 +623,6 @@ const AssetManagement = () => {
                     userId: userId,
                     sourceAsset: sourceAssetData
                 };
-
-                console.log('Request Data cuối cùng:', requestData);
 
                 const response = await axios.post(
                     `http://localhost:3076/api/vanminh/asset-transfer/export`,
@@ -803,7 +798,7 @@ const AssetManagement = () => {
         console.log('Changing page to:', newPage);
         setPagination(prev => ({
             ...prev,
-            page: newPage + 1 // Chuyển từ index 0 sang index 1
+            page: newPage + 1
         }));
     };
 
@@ -812,11 +807,11 @@ const AssetManagement = () => {
         setPagination(prev => ({
             ...prev,
             limit: newLimit,
-            page: 1 // Reset về trang 1 khi thay đổi limit
+            page: 1
         }));
     };
 
-    // Thêm useEffect để theo dõi thay đổi pagination
+    // theo dõi thay đổi pagination
     useEffect(() => {
         console.log('Pagination changed, fetching new data:', pagination);
         fetchAssets();
@@ -838,7 +833,6 @@ const AssetManagement = () => {
                 </Box>
             </Box>
 
-            {/* Thêm ô tìm kiếm */}
             <Box sx={{ mb: 3 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={4}>
@@ -875,7 +869,6 @@ const AssetManagement = () => {
                                     }
                                 })
                                 .catch(error => {
-                                    console.error('Lỗi khi tìm kiếm tài sản:', error);
                                     showSnackbar('Lỗi khi tìm kiếm tài sản', 'error');
                                 });
                             }}

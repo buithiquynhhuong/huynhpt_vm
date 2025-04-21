@@ -78,7 +78,6 @@ router.post('/import', authenticateToken, async (req, res) => {
                 throw new Error("Không tìm thấy thông tin văn phòng");
             }
 
-            // // Cập nhật hoặc tạo mới inventory
             // const inventoryUpdate = await AssetInventoryModel.findOneAndUpdate(
             //     { 
             //         assetId: assetId,
@@ -128,38 +127,36 @@ router.post('/import', authenticateToken, async (req, res) => {
     }
 });
 
-// Thêm hàm chuẩn hóa dữ liệu
-const normalizeAssetData = (sourceData, toOfficeId, quantity) => {
-    return {
-        code: sourceData.code || '',
-        quantity: parseInt(quantity) || 0,
-        unit: sourceData.unit?._id || sourceData.unit || '',
-        name: sourceData.name || '',
-        modelOrSeries: sourceData.modelOrSeries || '',
-        assetType: sourceData.assetType?._id || sourceData.assetType || '',
-        dateOfPurchase: sourceData.dateOfPurchase || null,
-        warranty: parseInt(sourceData.warranty) || 0,
-        expirationDate: sourceData.expirationDate || null,
-        price: parseFloat(sourceData.price) || 0,
-        depreciation: sourceData.depreciation || '',
-        supplier: sourceData.supplier || '',
-        addressNCC: sourceData.addressNCC || '',
-        phoneNCC: sourceData.phoneNCC || '',
-        assetLocation: toOfficeId || '',
-        managementOffice: toOfficeId || '',
-        description: sourceData.description || '',
-        seeMore: sourceData.seeMore || {},
-        lastUpdated: new Date()
-    };
-};
+//
+// const normalizeAssetData = (sourceData, toOfficeId, quantity) => {
+//     return {
+//         code: sourceData.code || '',
+//         quantity: parseInt(quantity) || 0,
+//         unit: sourceData.unit?._id || sourceData.unit || '',
+//         name: sourceData.name || '',
+//         modelOrSeries: sourceData.modelOrSeries || '',
+//         assetType: sourceData.assetType?._id || sourceData.assetType || '',
+//         dateOfPurchase: sourceData.dateOfPurchase || null,
+//         warranty: parseInt(sourceData.warranty) || 0,
+//         expirationDate: sourceData.expirationDate || null,
+//         price: parseFloat(sourceData.price) || 0,
+//         depreciation: sourceData.depreciation || '',
+//         supplier: sourceData.supplier || '',
+//         addressNCC: sourceData.addressNCC || '',
+//         phoneNCC: sourceData.phoneNCC || '',
+//         assetLocation: toOfficeId || '',
+//         managementOffice: toOfficeId || '',
+//         description: sourceData.description || '',
+//         seeMore: sourceData.seeMore || {},
+//         lastUpdated: new Date()
+//     };
+// };
 
 // Xuất kho
 router.post('/export', authenticateToken, async (req, res) => {
     let session;
     try {
         session = await mongoose.startSession();
-        console.log('Bắt đầu session mới');
-        
         const { assetId, fromOfficeId, toOfficeId, quantity, note, reason = 'TRANSFER', userId, sourceAsset } = req.body;
         const parsedQuantity = parseInt(quantity);
         
@@ -168,33 +165,25 @@ router.post('/export', authenticateToken, async (req, res) => {
         }
 
         await session.withTransaction(async () => {
-            console.log('Bắt đầu transaction');
 
-            // 1. Kiểm tra tài sản gốc tồn tại
             const sourceAssetDoc = await AssetModal.findById(assetId).session(session);
             if (!sourceAssetDoc) {
                 throw new Error("Không tìm thấy thông tin tài sản nguồn");
             }
 
-            // 2. Kiểm tra quyền xuất kho
             if (sourceAssetDoc.managementOffice.toString() !== fromOfficeId) {
                 throw new Error("Chỉ có thể xuất kho từ văn phòng quản lý tài sản");
             }
 
-            // 3. Kiểm tra số lượng tài sản có đủ để xuất không
             if (sourceAssetDoc.quantity < parsedQuantity) {
                 throw new Error(`Số lượng tài sản không đủ (hiện có: ${sourceAssetDoc.quantity}, cần xuất: ${parsedQuantity})`);
             }
 
-            // 4. Giảm số lượng tại văn phòng nguồn
             await AssetModal.findByIdAndUpdate(
                 assetId,
                 { $inc: { quantity: -parsedQuantity } },
                 { session }
             );
-
-            // 5. Kiểm tra xem trong AssetModel có văn phòng đích chưa
-            console.log('Kiểm tra văn phòng đích trong AssetModel:', toOfficeId);
             
             const existingOfficeAssets = await AssetModal.find({
                 managementOffice: toOfficeId
@@ -203,21 +192,10 @@ router.post('/export', authenticateToken, async (req, res) => {
             let destinationAssetId;
 
             if (existingOfficeAssets.length > 0) {
-                console.log('Tìm thấy văn phòng đích, số lượng assets:', existingOfficeAssets.length);
                 
                 const existingAsset = existingOfficeAssets.find(asset => asset.code === sourceAsset.code);
 
                 if (existingAsset) {
-                    console.log('Tìm thấy tài sản, cập nhật số lượng');
-                    // Mã tài sản đã được quản lý, cập nhật số lượng
-                    console.log('Dữ liệu cập nhật cho AssetModel:', {
-                        assetId: existingAsset._id,
-                        code: existingAsset.code,
-                        currentQuantity: existingAsset.quantity,
-                        newQuantity: existingAsset.quantity + parsedQuantity,
-                        managementOffice: existingAsset.managementOffice,
-                        lastUpdated: new Date()
-                    });
 
                     const updatedAsset = await AssetModal.findByIdAndUpdate(
                         existingAsset._id,
@@ -229,9 +207,7 @@ router.post('/export', authenticateToken, async (req, res) => {
                     );
                     destinationAssetId = updatedAsset._id;
 
-                    console.log('Kết quả cập nhật AssetModel:', updatedAsset);
                 } else {
-                    console.log('Không tìm thấy tài sản, tạo mới');
                     const newAssetData = {
                         ...sourceAsset,
                         quantity: parsedQuantity,
@@ -240,18 +216,14 @@ router.post('/export', authenticateToken, async (req, res) => {
                         lastUpdated: new Date()
                     };
 
-                    console.log('Dữ liệu trước khi tạo:', newAssetData);
                     const newAsset = await AssetModal.create([newAssetData], { session });
-                    console.log('Kết quả sau khi tạo:', newAsset[0]);
                     
                     // Kiểm tra xem tài sản đã được tạo thành công chưa
                     const checkAsset = await AssetModal.findById(newAsset[0]._id).session(session);
-                    console.log('Kiểm tra tài sản sau khi tạo:', checkAsset);
                     
                     destinationAssetId = newAsset[0]._id;
                 }
             } else {
-                console.log('Không tìm thấy văn phòng đích, tạo mới tài sản');
                 const newAssetData = {
                     ...sourceAsset,
                     quantity: parsedQuantity,
@@ -260,18 +232,15 @@ router.post('/export', authenticateToken, async (req, res) => {
                     lastUpdated: new Date()
                 };
 
-                console.log('Dữ liệu trước khi tạo:', newAssetData);
                 const newAsset = await AssetModal.create([newAssetData], { session });
-                console.log('Kết quả sau khi tạo:', newAsset[0]);
-                
-                // Kiểm tra xem tài sản đã được tạo thành công chưa
+
                 const checkAsset = await AssetModal.findById(newAsset[0]._id).session(session);
                 console.log('Kiểm tra tài sản sau khi tạo:', checkAsset);
                 
                 destinationAssetId = newAsset[0]._id;
             }
 
-            // 6. Cập nhật inventory
+
             await Promise.all([
                 // Cập nhật inventory văn phòng nguồn
                 AssetInventoryModel.findOneAndUpdate(
@@ -307,7 +276,7 @@ router.post('/export', authenticateToken, async (req, res) => {
                 )
             ]);
 
-            // 7. Tạo log xuất kho
+            // logs export
             const transferLog = new AssetTransferLogModel({
                 assetId: assetId,
                 fromOffice: fromOfficeId,
@@ -322,12 +291,9 @@ router.post('/export', authenticateToken, async (req, res) => {
 
             await transferLog.save({ session });
 
-            console.log('Hoàn thành các thao tác trong transaction');
         });
 
-        console.log('Transaction đã commit thành công');
-
-        // Kiểm tra lại sau khi commit
+        // check commit final
         const finalCheck = await AssetModal.findOne({
             code: sourceAsset.code,
             managementOffice: toOfficeId
@@ -340,14 +306,12 @@ router.post('/export', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Lỗi trong quá trình xử lý:', error);
         res.status(500).json({ 
             message: "Lỗi khi xuất kho: " + error.message,
             status: "error"
         });
     } finally {
         if (session) {
-            console.log('Kết thúc session');
             await session.endSession();
         }
     }
@@ -368,7 +332,7 @@ router.get('/inventory/:assetId', authenticateToken, async (req, res) => {
     }
 });
 
-// Xóa nhiều log
+// Xóa nhiều logs
 router.delete('/logs', authenticateToken, async (req, res) => {
     try {
         const { ids } = req.body;
@@ -377,7 +341,7 @@ router.delete('/logs', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: "Danh sách ID không hợp lệ" });
         }
 
-        // Chuyển đổi ID thành ObjectId
+        // convert string IDs to ObjectId
         const objectIds = ids.map(id => new mongoose.Types.ObjectId(id));
 
         const result = await AssetTransferLogModel.deleteMany({ _id: { $in: objectIds } });
